@@ -1,5 +1,5 @@
-import { Playlist } from './model/Playlist';
-import { Song } from './model/Song';
+import { Playlist } from '../model/Playlist';
+import { Song } from '../model/Song';
 import { Fetch } from './Fetch';
 import Database from 'better-sqlite3'
 import { ProgramArguments } from './ProgramArguments';
