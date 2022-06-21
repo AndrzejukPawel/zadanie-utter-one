@@ -3,11 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const Fetch_1 = require("./Fetch");
+const Fetch_1 = require("../Utilities/Fetch");
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const ProgramArguments_1 = require("./ProgramArguments");
 class App {
-    constructor() {
+    constructor(args) {
         this.dropIfExistsPlaylistTable = `DROP TABLE IF EXISTS Playlist;`;
         this.createPlaylistTable = `
     CREATE TABLE Playlist(
@@ -79,6 +79,34 @@ class App {
             sample_mp310, sample_ogg10, sample_aac20, sample_wav20, sample_mp320, 
             sample_mp320_enc, sample_ogg20, sample_ogg20_enc, sample_aac30, sample_wav30, 
             sample_mp330, sample_ogg30;`;
+        var params = new ProgramArguments_1.ProgramArguments(args.slice(2));
+        const db = new better_sqlite3_1.default(params.databasePath);
+        this.initializeDatabase(db);
+        Fetch_1.Fetch.setThrottle(5);
+        Fetch_1.Fetch.Get(params.url).then(playlists => {
+            playlists.forEach((playlist) => {
+                playlist.artist = playlist.artist ? 1 : 0;
+                playlist.adultOnly = playlist.adultOnly ? 1 : 0;
+            });
+            this.insertData(db, 'Playlist', playlists);
+            var promises = [];
+            playlists.forEach((playlist) => {
+                promises.push(Fetch_1.Fetch.Get(playlist.songsLink).then(songs => {
+                    console.log("processing playlist " + playlist.playlistId);
+                    songs.forEach((song) => {
+                        song.adultOnly = song.adultOnly ? 1 : 0;
+                    });
+                    this.insertData(db, 'Song', songs);
+                    this.insertData(db, 'PlaylistSongList', songs.map(song => {
+                        return { playlistId: playlist.playlistId, songId: song.songId };
+                    }));
+                }));
+            });
+            Promise.allSettled(promises).then(() => {
+                console.log("grouping songs");
+                db.prepare(this.createSongGrouped).run();
+            });
+        });
     }
     insertData(db, tablename, data) {
         const cols = Object.keys(data[0]).join(", ");
@@ -109,35 +137,6 @@ class App {
         db.prepare(this.createSongTable).run();
         db.prepare(this.createPlaylistSongListTable).run();
     }
-    main(args) {
-        var params = new ProgramArguments_1.ProgramArguments(args.slice(2));
-        const db = new better_sqlite3_1.default(params.databasePath);
-        this.initializeDatabase(db);
-        Fetch_1.Fetch.Get(params.url).then(playlists => {
-            playlists.forEach((playlist) => {
-                playlist.artist = playlist.artist ? 1 : 0;
-                playlist.adultOnly = playlist.adultOnly ? 1 : 0;
-            });
-            this.insertData(db, 'Playlist', playlists);
-            var promises = [];
-            playlists.forEach((playlist) => {
-                promises.push(Fetch_1.Fetch.Get(playlist.songsLink).then(songs => {
-                    console.log("processing playlist " + playlist.playlistId);
-                    songs.forEach((song) => {
-                        song.adultOnly = song.adultOnly ? 1 : 0;
-                    });
-                    this.insertData(db, 'Song', songs);
-                    this.insertData(db, 'PlaylistSongList', songs.map(song => {
-                        return { playlistId: playlist.playlistId, songId: song.songId };
-                    }));
-                }));
-            });
-            Promise.allSettled(promises).then(() => {
-                console.log("grouping songs");
-                db.prepare(this.createSongGrouped).run();
-            });
-        });
-    }
 }
-new App().main(process.argv);
+new App(process.argv);
 //node ./script1/app.js -url https://storage.googleapis.com/songpop3-catalog/v1/latest/catalog.spp.json -databasePath D:/tmp/db.sqlite

@@ -1,6 +1,6 @@
 import { Playlist } from '../model/Playlist';
 import { Song } from '../model/Song';
-import { Fetch } from './Fetch';
+import { Fetch } from '../Utilities/Fetch';
 import Database from 'better-sqlite3'
 import { ProgramArguments } from './ProgramArguments';
 
@@ -114,13 +114,14 @@ class App{
         db.prepare(this.createPlaylistSongListTable).run();
     }
 
-    main(args: string[]){
+    constructor(args: string[]){
     
         var params = new ProgramArguments(args.slice(2));
         
         const db = new Database(params.databasePath);
         this.initializeDatabase(db);
 
+        Fetch.setThrottle(5);
 
         (Fetch.Get(params.url) as Promise<Playlist[]>).then(playlists => {
             playlists.forEach((playlist) =>{
@@ -150,6 +151,6 @@ class App{
         });
     }    
 }
-new App().main(process.argv);
+new App(process.argv);
 
 //node ./script1/app.js -url https://storage.googleapis.com/songpop3-catalog/v1/latest/catalog.spp.json -databasePath D:/tmp/db.sqlite
