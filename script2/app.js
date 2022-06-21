@@ -8,15 +8,9 @@ const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const AnalyzerFactory_1 = require("./Analyzer/AnalyzerFactory");
 const CsvIO_1 = require("../Utilities/CsvIO");
 class App {
-    defineRegExpFunction(db) {
-        db.function('regexp', { deterministic: true }, (regex, text) => {
-            return new RegExp(regex).test(text) ? 1 : 0;
-        });
-    }
     constructor(args) {
         var params = new ProgramArguments_1.ProgramArguments(args.slice(2));
         const db = new better_sqlite3_1.default(params.databasePath);
-        this.defineRegExpFunction(db);
         const analyzerFactory = new AnalyzerFactory_1.AnalyzerFactory(db);
         params.analyzerTypes.forEach((type) => {
             const analyzer = analyzerFactory.getAnalyzer(type);

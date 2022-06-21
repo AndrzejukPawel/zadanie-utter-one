@@ -4,18 +4,10 @@ import { AnalyzerFactory } from './Analyzer/AnalyzerFactory'
 import { CsvIO } from '../Utilities/CsvIO'
 
 class App{
-
-    private defineRegExpFunction(db: Database){
-        db.function('regexp', { deterministic: true }, (regex, text) => {
-            return new RegExp(regex).test(text) ? 1 : 0;
-        });
-    }
-
     constructor(args: string[]){
         var params = new ProgramArguments(args.slice(2));
 
         const db = new Database(params.databasePath);
-        this.defineRegExpFunction(db);
         
         const analyzerFactory = new AnalyzerFactory(db);
 
